@@ -1,8 +1,8 @@
 #include "shell.h"
 
 /**
- * clear_info - Initializes an info_t struct
- * @info: Pointer to the info_t struct to be cleared
+ * clear_info - Initializes the info_t struct
+ * @info: Address of the struct
  */
 void clear_info(info_t *info)
 {
@@ -13,8 +13,8 @@ void clear_info(info_t *info)
 }
 
 /**
- * set_info - Initializes an info_t struct with arguments
- * @info: Pointer to the info_t struct
+ * set_info - Initializes the info_t struct
+ * @info: Address of the struct
  * @av: Argument vector
  */
 void set_info(info_t *info, char **av)
@@ -24,10 +24,10 @@ void set_info(info_t *info, char **av)
 	info->fname = av[0];
 	if (info->arg)
 	{
-		info->argv = _strtow(info->arg, " \t");
+		info->argv = strtow(info->arg, " \t");
 		if (!info->argv)
 		{
-			info->argv = _malloc(sizeof(char *) * 2);
+			info->argv = malloc(sizeof(char *) * 2);
 			if (info->argv)
 			{
 				info->argv[0] = _strdup(info->arg);
@@ -44,8 +44,8 @@ void set_info(info_t *info, char **av)
 }
 
 /**
- * free_info - Frees fields of an info_t struct
- * @info: Pointer to the info_t struct
+ * free_info - Frees the fields of the info_t struct
+ * @info: Address of the struct
  * @all: True if freeing all fields
  */
 void free_info(info_t *info, int all)
@@ -71,3 +71,4 @@ void free_info(info_t *info, int all)
 		_putchar(BUF_FLUSH);
 	}
 }
+

@@ -1,63 +1,86 @@
 #include "shell.h"
 
 /**
- * _custom_strncpy - Copies a string up to a specified length.
- * @dest: Destination string.
- * @src: Source string.
- * @n: Number of characters to copy.
- * Return: Pointer to the destination string.
+ * _eputs - Outputs a string to stderr
+ * @str: The string to be output
+ *
+ * Return: Nothing
  */
-char *_custom_strncpy(char *dest, const char *src, size_t n)
+void _eputs(char *str)
 {
-	size_t i;
+	int i = 0;
 
-	for (i = 0; i < n && src[i] != '\0'; i++)
-		dest[i] = src[i];
-
-	for (; i < n; i++)
-		dest[i] = '\0';
-
-	return (dest);
-}
-
-/**
- * _custom_strncat - Concatenates two strings up to a specified length.
- * @dest: Destination string.
- * @src: Source string.
- * @n: Maximum number of characters to concatenate.
- * Return: Pointer to the destination string.
- */
-char *_custom_strncat(char *dest, const char *src, size_t n)
-{
-	size_t dest_len = _custom_strlen(dest);
-	size_t i;
-
-	for (i = 0; i < n && src[i] != '\0'; i++)
-		dest[dest_len + i] = src[i];
-
-	dest[dest_len + i] = '\0';
-
-	return (dest);
-}
-
-/**
- * _custom_strchr - Locates a character in a string.
- * @s: String to be searched.
- * @c: Character to be located.
- * Return: Pointer to the first occurrence of character c in the string s,
- *         or NULL if the character is not found.
- */
-char *_custom_strchr(const char *s, int c)
-{
-	while (*s != '\0')
+	if (!str)
+		return;
+	while (str[i] != '\0')
 	{
-		if (*s == c)
-			return (char *s);
-		s++;
+		_eputchar(str[i]);
+		i++;
 	}
-
-	if (*s == c)
-		return (char *s);
-
-	return (NULl);
 }
+
+/**
+ * _eputchar - Writes a character to stderr
+ * @c: The character to be written
+ *
+ * Return: On success 1.
+ * On error, -1 is returned, and errno is set.
+ */
+int _eputchar(char c)
+{
+	static int i;
+	static char buf[WRITE_BUF_SIZE];
+
+	if (c == BUF_FLUSH || i >= WRITE_BUF_SIZE)
+	{
+		write(2, buf, i);
+		i = 0;
+	}
+	if (c != BUF_FLUSH)
+		buf[i++] = c;
+	return (1);
+}
+
+/**
+ * _putfd - Writes a character to a given file descriptor
+ * @c: The character to be written
+ * @fd: The file descriptor to write to
+ *
+ * Return: On success 1.
+ * On error, -1 is returned, and errno is set.
+ */
+int _putfd(char c, int fd)
+{
+	static int i;
+	static char buf[WRITE_BUF_SIZE];
+
+	if (c == BUF_FLUSH || i >= WRITE_BUF_SIZE)
+	{
+		write(fd, buf, i);
+		i = 0;
+	}
+	if (c != BUF_FLUSH)
+		buf[i++] = c;
+	return (1);
+}
+
+/**
+ * _putsfd - Outputs a string to a given file descriptor
+ * @str: The string to be output
+ * @fd: The file descriptor to write to
+ *
+ * Return: The number of characters written
+ */
+int _putsfd(char *str, int fd)
+{
+	int i = 0;
+
+	if (!str)
+		return (0);
+	while (*str)
+	{
+		i += _putfd(*str++, fd);
+	}
+	return (i);
+}
+

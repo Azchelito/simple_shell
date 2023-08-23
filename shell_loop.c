@@ -1,158 +1,161 @@
 #include "shell.h"
 
 /**
- * custom_shell_loop - main shell loop
- * @shell_info: the parameter & return info struct
- * @arguments: the argument vector from main()
+ * hsh - main shell loop
+ * @info: the parameter & return info struct
+ * @av: the argument vector from main()
  *
  * Return: 0 on success, 1 on error, or error code
  */
-int custom_shell_loop(info_t *shell_info, char **arguments)
+int hsh(info_t *info, char **av)
 {
-	ssize_t read_status = 0;
-	int builtin_result = 0;
+	ssize_t r = 0;
+	int builtin_ret = 0;
 
-	while (read_status != -1 && builtin_result != -2)
+	while (r != -1 && builtin_ret != -2)
 	{
-		clear_shell_info(shell_info);
-		if (is_interactive(shell_info))
+		clear_info(info);
+		if (interactive(info))
 			_puts("$ ");
 		_eputchar(BUF_FLUSH);
-		read_status = read_input(shell_info);
-		if (read_status != -1)
+		r = get_input(info);
+		if (r != -1)
 		{
-			set_shell_info(shell_info, arguments);
-			builtin_result = find_custom_builtin(shell_info);
-			if (builtin_result == -1)
-				find_custom_command(shell_info);
+			set_info(info, av);
+			builtin_ret = find_builtin(info);
+			if (builtin_ret == -1)
+				find_cmd(info);
 		}
-		else if (is_interactive(shell_info))
+		else if (interactive(info))
 			_putchar('\n');
-		free_shell_info(shell_info, 0);
+		free_info(info, 0);
 	}
-	write_shell_history(shell_info);
-	free_shell_info(shell_info, 1);
-	if (!is_interactive(shell_info) && shell_info->status)
-		exit(shell_info->status);
-	if (builtin_result == -2)
+	write_history(info);
+	free_info(info, 1);
+	if (!interactive(info) && info->status)
+		exit(info->status);
+	if (builtin_ret == -2)
 	{
-		if (shell_info->error_number == -1)
-			exit(shell_info->status);
-		exit(shell_info->error_number);
+		if (info->err_num == -1)
+			exit(info->status);
+		exit(info->err_num);
 	}
-	return (builtin_result);
+	return (builtin_ret);
 }
 
 /**
- * find_custom_builtin - finds a custom builtin command
- * @shell_info: the parameter & return info struct
+ * find_builtin - finds a builtin command
+ * @info: the parameter & return info struct
  *
  * Return: -1 if builtin not found,
  * 	0 if builtin executed successfully,
  * 	1 if builtin found but not successful,
  * 	2 if builtin signals exit()
  */
-int find_custom_builtin(info_t *shell_info)
+int find_builtin(info_t *info)
 {
-	int index, builtin_result = -1;
-	builtin_table custom_builtins[] = {
-		{"exit", _my_exit},
-		{"env", _my_env},
-		{"help", _my_help},
-		{"history", _my_history},
-		{"setenv", _my_setenv},
-		{"unsetenv", _my_unsetenv},
-		{"cd", _my_cd},
-		{"alias", _my_alias},
+	int i, built_in_ret = -1;
+	builtin_table builtintbl[] = {
+		{"exit", _myexit},
+		{"env", _myenv},
+		{"help", _myhelp},
+		{"history", _myhistory},
+		{"setenv", _mysetenv},
+		{"unsetenv", _myunsetenv},
+		{"cd", _mycd},
+		{"alias", _myalias},
 		{NULL, NULL}
 	};
 
-	for (index = 0; custom_builtins[index].type; index++)
-		if (_strcmp(shell_info->argv[0], custom_builtins[index].type) == 0)
+	for (i = 0; builtintbl[i].type; i++)
+		if (_strcmp(info->argv[0], builtintbl[i].type) == 0)
 		{
-			shell_info->line_count++;
-			builtin_result = custom_builtins[index].func(shell_info);
+			info->line_count++;
+			built_in_ret = builtintbl[i].func(info);
 			break;
 		}
-	return (builtin_result);
+	return (built_in_ret);
 }
 
 /**
- * find_custom_command - finds a command in PATH
- * @shell_info: the parameter & return info struct
+ * find_cmd - finds a command in PATH
+ * @info: the parameter & return info struct
  *
  * Return: void
  */
-void find_custom_command(info_t *shell_info)
+void find_cmd(info_t *info)
 {
-	char *command_path = NULL;
-	int i, count;
+	char *path = NULL;
+	int i, k;
 
-	shell_info->path = shell_info->argv[0];
-	if (shell_info->line_count_flag == 1)
+	info->path = info->argv[0];
+	if (info->linecount_flag == 1)
 	{
-		shell_info->line_count++;
-		shell_info->line_count_flag = 0;
+		info->line_count++;
+		info->linecount_flag = 0;
 	}
-	for (i = 0, count = 0; shell_info->arg[i]; i++)
-		if (!is_delimiter(shell_info->arg[i], " \t\n"))
-			count++;
-	if (!count)
+	for (i = 0, k = 0; info->arg[i]; i++)
+		if (!is_delim(info->arg[i], " \t\n"))
+			k++;
+	if (!k)
 		return;
 
-	command_path = find_path(shell_info, _getenv(shell_info, "PATH="), shell_info->argv[0]);
-	if (command_path)
+	path = find_path(info, _getenv(info, "PATH="), info->argv[0]);
+	if (path)
 	{
-		shell_info->path = command_path;
-		fork_custom_command(shell_info);
+		info->path = path;
+		fork_cmd(info);
 	}
 	else
 	{
-		if ((is_interactive(shell_info) || _getenv(shell_info, "PATH=")
-					|| shell_info->argv[0][0] == '/') && is_valid_command(shell_info, shell_info->argv[0]))
-			fork_custom_command(shell_info);
-		else if (*(shell_info->arg) != '\n')
+		if ((interactive(info) || _getenv(info, "PATH=")
+					|| info->argv[0][0] == '/') && is_cmd(info, info->argv[0]))
+			fork_cmd(info);
+		else if (*(info->arg) != '\n')
 		{
-			shell_info->status = 127;
-			print_error(shell_info, "not found\n");
+			info->status = 127;
+			print_error(info, "not found\n");
 		}
 	}
 }
 
 /**
- * fork_custom_command - forks an exec thread to run custom command
- * @shell_info: the parameter & return info struct
+ * fork_cmd - forks a an exec thread to run cmd
+ * @info: the parameter & return info struct
  *
  * Return: void
  */
-void fork_custom_command(info_t *shell_info)
+void fork_cmd(info_t *info)
 {
 	pid_t child_pid;
 
 	child_pid = fork();
 	if (child_pid == -1)
 	{
+		/* TODO: PUT ERROR FUNCTION */
 		perror("Error:");
 		return;
 	}
 	if (child_pid == 0)
 	{
-		if (execve(shell_info->path, shell_info->argv, get_environ(shell_info)) == -1)
+		if (execve(info->path, info->argv, get_environ(info)) == -1)
 		{
-			free_shell_info(shell_info, 1);
+			free_info(info, 1);
 			if (errno == EACCES)
 				exit(126);
 			exit(1);
 		}
+		/* TODO: PUT ERROR FUNCTION */
 	}
 	else
 	{
-		wait(&(shell_info->status));
-		if (WIFEXITED(shell_info->status))
+		wait(&(info->status));
+		if (WIFEXITED(info->status))
 		{
-			shell_info->status = WEXITSTATUS(shell_info->status);
-			if (shell_info->status == 126)
-				print_error(shell_info, "Permission denied\n");
+			info->status = WEXITSTATUS(info->status);
+			if (info->status == 126)
+				print_error(info, "Permission denied\n");
 		}
 	}
 }
+
